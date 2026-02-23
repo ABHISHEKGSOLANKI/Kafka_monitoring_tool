@@ -1,0 +1,60 @@
+//Start containers in the docker file
+docker compose docker-file.yml up
+
+//List All Containers
+docker ps
+
+//Show ALL containers (running + stopped):
+docker ps -a
+
+//Stop a specific container:
+docker stop <container name>
+
+//Stop multiple containers:
+docker stop kafka1 kafka2 kafka3 zookeeper
+
+//Stop ALL running containers:
+docker stop $(docker ps -q)
+
+//Delete specific container:
+docker rm kafka1
+
+//Delete multiple:
+docker rm kafka1 kafka2 kafka3 zookeeper
+
+//Delete ALL stopped containers:
+docker rm $(docker ps -aq)
+
+//Force Delete (Stop + Remove in One Command)
+docker rm -f kafka1
+
+/*
+Stop + Remove Entire docker-compose Setup
+✔ Stop containers
+✔ Remove containers
+✔ Remove network
+*/
+docker-compose down
+
+/*
+Remove Everything Including Volumes (Full Reset)
+This deletes:
+Topics
+Logs
+Offsets
+Zookeeper data
+*/
+docker-compose down -v
+
+//Remove Unused Docker Data (Cleanup)
+docker system prune -a
+
+//Check Container Logs (Very Useful for Kafka Debugging)
+docker logs kafka1
+
+//Follow logs live:
+docker logs -f kafka1
+
+//Best pratice when testing. This gives you a fresh Kafka cluster every time.
+docker-compose up -d
+docker-compose down -v

@@ -1,0 +1,5 @@
+footer {
+    bottom: 0;
+    z-index: 1000;
+    background-color: #01060b; /* Optional: Add a background color */
+  }

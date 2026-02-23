@@ -1,0 +1,37 @@
+.home h1{
+  text-align: center;
+}
+
+.home p{
+  color: black;
+  font-size: small;
+}
+
+.home p span{
+  white-space: pre-wrap;
+}
+
+.largetext{
+  font-size: xx-large;
+}
+
+.welcomemessage span{
+  font-size: larger;
+}
+
+.carousel-inner>.item>a>img, .carousel-inner>.item>img {
+  height: 320px;
+  width: 100%;
+}
+
+.carousel {
+  position: relative;
+  margin-top: 25px;
+  margin-bottom: 25px;
+  z-index: 1;
+}
+
+.carousel-image {
+  height: 100%;          /* Adjust to the height of the div */
+  object-fit: cover;      /* Ensures the image covers the div without distortion */
+}

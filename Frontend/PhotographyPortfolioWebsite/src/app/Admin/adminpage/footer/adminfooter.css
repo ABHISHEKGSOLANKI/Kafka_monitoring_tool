@@ -1,0 +1,23 @@
+.adminfooter {
+    text-align: center;
+    background-color: rgb(5, 12, 5);
+    /* Add more styles as needed */
+    margin-top: auto; /* Push the footer to the bottom */
+}
+
+.text-box {
+    width: 70%; /* or any specific width */
+    margin: 0 auto;
+    
+}
+
+p{
+    text-align: center;
+    color: white;
+}
+
+a{
+    padding-left: 30px;
+    padding-right: 30px;
+}
+

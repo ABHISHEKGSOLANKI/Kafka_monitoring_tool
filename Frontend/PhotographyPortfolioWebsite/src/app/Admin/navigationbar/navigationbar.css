@@ -1,0 +1,53 @@
+.navbar {
+    background-color: black;
+}
+
+a.nav-link {
+    font-size: larger;
+    color: white;
+}
+
+
+.navbar-toggler {
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+.navbar-nav {
+    display: flex;
+    flex-direction: row;
+}
+
+@media (max-width: 991px) {
+    .navbar-nav {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .navbar-nav .nav-item {
+        text-align: center;
+    }
+
+    .navbar-nav .dropdown-menu {
+        position: static;
+        float: none;
+    }
+
+    a.nav-link {
+        font-size: larger;
+        color: white;
+    }
+
+    .navbar-toggler-icon {
+        background: white;
+        display: block;
+        position: absolute;
+        right: 0;
+        top: 0;
+        margin: 10px;
+    }
+
+    i.fa.fa-bars {
+        margin: 5px;
+    }
+}
