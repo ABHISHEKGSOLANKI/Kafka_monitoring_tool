@@ -1,81 +1,86 @@
-import { fetchTopics } from "../api/kafkaApi";
+import { fetchBrokers } from "../api/kafkaApi";
 import { useEffect, useState } from "react";
+import { sorting, handleSort } from "../utils/pageination";
 
 export default function Brokers() {
-    const [search, setSearch] = useState("");
-    const [currentPage, setCurrentPage] = useState(1);
-    const [rowsPerPage] = useState(5);
-    const [sortField, setSortField] = useState("topic");
-    const [sortDirection, setSortDirection] = useState("asc");
-    const [topics, setTopics] = useState([]);
+    // Active brokers    
+    const [activeBrokers, setActiveBrokers] = useState([]);
+    const [searchActiveBrokers, setSearchActiveBrokers] = useState("");
+    const [currentPageActiveBrokers, setCurrentPageActiveBrokers] = useState(1);
+    const [rowsPerPageActiveBrokers] = useState(5);
+    const [sortFieldActiveBroker, setSortFieldActiveBroker] = useState("host");
+    const [sortDirectionActiveBroker, setSortDirectionActiveBroker] = useState("asc");
+
+    // Inactive brokers
+    const [inactiveBrokers, setInactiveBrokers] = useState([]);
+    const [searchInactiveBrokers, setSearchInactiveBrokers] = useState("");
+    const [currentPageInactiveBrokers, setCurrentPageInactiveBrokers] = useState(1);
+    const [rowsPerPageInActiveBroker] = useState(5);
+    const [sortFieldInActiveBroker, setSortFieldInActiveBroker] = useState("host");
+    const [sortDirectionInActiveBroker, setSortDirectionInActiveBroker] = useState("asc");
+
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    // 🔹 Normalize API response (fix backend typo safely)
-    const normalizedTopics = topics.map(t => ({
-        ...t,
-        replicationFactor: t.replicationFactor ?? t.replificationFactor
-    }));
 
-    const filteredTopics = normalizedTopics.filter(topic =>
-        topic.topic.toLowerCase().includes(search.toLowerCase())
+const filteredActiveBrokers = activeBrokers.filter(broker => 
+    broker.id.toLowerCase().includes(searchActiveBrokers.toLowerCase()) ||
+    broker.host.toLowerCase().includes(searchActiveBrokers.toLowerCase()) ||
+    broker.port.toString().includes(searchActiveBrokers)
+);  
+
+const filteredInActiveBrokers = inactiveBrokers.filter(broker => 
+    broker.id.toLowerCase().includes(searchInactiveBrokers.toLowerCase()) ||
+    broker.host.toLowerCase().includes(searchInactiveBrokers.toLowerCase()) ||
+    broker.port.toString().includes(searchInactiveBrokers)
+);
+
+
+const sortedActiveBrokers = sorting(filteredActiveBrokers, sortFieldActiveBroker, sortDirectionActiveBroker);
+
+const sortedInactiveBrokers = sorting(filteredInActiveBrokers, sortFieldInActiveBroker, sortDirectionInActiveBroker);
+
+const totalPagesActiveBrokers = Math.ceil(sortedActiveBrokers.length / rowsPerPageActiveBrokers);
+const totalPagesInactiveBrokers = Math.ceil(sortedInactiveBrokers.length / rowsPerPageInActiveBroker);
+
+    const paginatedActiveBrokers = sortedActiveBrokers.slice(
+        (currentPageActiveBrokers - 1) * rowsPerPageActiveBrokers,
+        currentPageActiveBrokers * rowsPerPageActiveBrokers
     );
 
-    const sortedTopics = [...filteredTopics].sort((a, b) => {
-        const valA = a[sortField];
-        const valB = b[sortField];
-
-        if (typeof valA === "number") {
-            return sortDirection === "asc" ? valA - valB : valB - valA;
-        }
-
-        return sortDirection === "asc"
-            ? String(valA).localeCompare(String(valB))
-            : String(valB).localeCompare(String(valA));
-    });
-
-    const totalPages = Math.ceil(sortedTopics.length / rowsPerPage);
-
-    const paginatedTopics = sortedTopics.slice(
-        (currentPage - 1) * rowsPerPage,
-        currentPage * rowsPerPage
+    const paginatedInactiveBrokers = sortedInactiveBrokers.slice(
+        (currentPageInactiveBrokers - 1) * rowsPerPageInActiveBroker,
+        currentPageInactiveBrokers * rowsPerPageInActiveBroker
     );
 
-    const handleSort = (field) => {
-        if (field === sortField) {
-            setSortDirection(prev => (prev === "asc" ? "desc" : "asc"));
-        } else {
-            setSortField(field);
-            setSortDirection("asc");
-        }
-    };
+    const handleSortWrapper = (field) => handleSort(field, sortFieldActiveBroker, setSortFieldActiveBroker, sortDirectionActiveBroker, setSortDirectionActiveBroker);
+    const handleSortInActiveWrapper = (field) => handleSort(field, sortFieldInActiveBroker, setSortFieldInActiveBroker, sortDirectionInActiveBroker, setSortDirectionInActiveBroker);
 
-    useEffect(() => {
-        fetchTopics()
-            .then(res => {
-                setTopics(res.data);
-                setLoading(false);
-            })
-            .catch(() => {
-                setError("Failed to load topics");
-                setLoading(false);
-            });
-    }, []);
+useEffect(() => {
+    fetchBrokers()
+        .then(res => {
+            const activeBrokers = Object.values(res.data.active || {});
+            const inActiveBrokers = Object.values(res.data.inactive || {});
+            setActiveBrokers(activeBrokers);
+            setInactiveBrokers(inActiveBrokers);
+            setLoading(false);
+        })
+        .catch(() => {
+            setError("Failed to load brokers...");
+            setLoading(false);
+        });
+}, []);
 
-    if (loading) return <div>Loading topics...</div>;
-    if (error) return <div>{error}</div>;
 
     return (
         <div>
-            <h1>Kafka Topics</h1>
-
             <input
                 type="text"
-                placeholder="Search topics..."
-                value={search}
+                placeholder="Search active brokers..."
+                value={searchActiveBrokers}
                 onChange={(e) => {
-                    setSearch(e.target.value);
-                    setCurrentPage(1);
+                    setSearchActiveBrokers(e.target.value);
+                    setCurrentPageActiveBrokers(1);
                 }}
                 className="mb-4 p-2 rounded bg-slate-700 text-white"
             />
@@ -83,49 +88,121 @@ export default function Brokers() {
             <table className="min-w-full bg-slate-800 text-gray-300">
                 <thead>
                     <tr>
-                        <th onClick={() => handleSort("topic")} className="cursor-pointer">
-                            Topic {sortField === "topic" ? (sortDirection === "asc" ? "▲" : "▼") : ""}
+                        <th onClick={() => handleSortWrapper("id")} className="cursor-pointer">
+                            ID {sortFieldActiveBroker === "id" ? (sortDirectionActiveBroker === "asc" ? "▲" : "▼") : ""}
                         </th>
 
-                        <th onClick={() => handleSort("partition")} className="cursor-pointer">
-                            Partitions {sortField === "partition" ? (sortDirection === "asc" ? "▲" : "▼") : ""}
+                        <th onClick={() => handleSortWrapper("host")} className="cursor-pointer">
+                            Host {sortFieldActiveBroker === "host" ? (sortDirectionActiveBroker === "asc" ? "▲" : "▼") : ""}
                         </th>
 
-                        <th onClick={() => handleSort("replicationFactor")} className="cursor-pointer">
-                            Replication {sortField === "replicationFactor" ? (sortDirection === "asc" ? "▲" : "▼") : ""}
-                        </th>
-
-                        <th onClick={() => handleSort("retention")} className="cursor-pointer">
-                            Retention(ms) {sortField === "retention" ? (sortDirection === "asc" ? "▲" : "▼") : ""}
+                        <th onClick={() => handleSortWrapper("port")} className="cursor-pointer">
+                            Port {sortFieldActiveBroker === "port" ? (sortDirectionActiveBroker === "asc" ? "▲" : "▼") : ""}
                         </th>
                     </tr>
                 </thead>
 
                 <tbody>
-                    {paginatedTopics.map(data => (
-                        <tr key={data.topic}>
-                            <td>{data.topic}</td>
-                            <td>{data.partition}</td>
-                            <td>{data.replicationFactor}</td>
-                            <td>{Number(data.retention).toLocaleString()}</td>
+                    {loading ? (
+                        <tr>
+                            <td colSpan="4" className="text-center py-4">Loading Active brokers...</td>
                         </tr>
-                    ))}
+                    ) :  error ? (
+                        <tr>
+                            <td colSpan="4" className="text-center py-4">{error}</td>
+                        </tr>
+                    ) : (
+                        paginatedActiveBrokers.map(data => (
+                            <tr key={data.id}>
+                                <td>{data.id}</td>
+                                <td>{data.host}</td>
+                                <td>{data.port}</td>
+                        </tr>
+                    )))}
                 </tbody>
             </table>
 
             <div className="flex justify-between mt-4">
                 <button
-                    disabled={currentPage === 1}
-                    onClick={() => setCurrentPage(p => p - 1)}
+                    disabled={currentPageActiveBrokers === 1}
+                    onClick={() => setCurrentPageActiveBrokers(p => p - 1)}
                 >
                     Prev
                 </button>
 
-                <span>Page {currentPage} / {totalPages}</span>
+                <span>Page {currentPageActiveBrokers} / {totalPagesActiveBrokers}</span>
 
                 <button
-                    disabled={currentPage === totalPages}
-                    onClick={() => setCurrentPage(p => p + 1)}
+                    disabled={currentPageActiveBrokers === totalPagesActiveBrokers}
+                    onClick={() => setCurrentPageActiveBrokers(p => p + 1)}
+                >
+                    Next
+                </button>
+            </div>
+
+            {/* Inactive */}
+
+            <input
+                type="text"
+                placeholder="Search inactive brokers..."
+                value={searchInactiveBrokers}
+                onChange={(e) => {
+                    setSearchInactiveBrokers(e.target.value);
+                    setCurrentPageInactiveBrokers(1);
+                }}
+                className="mb-4 p-2 rounded bg-slate-700 text-white"
+            />
+
+            <table className="min-w-full bg-slate-800 text-gray-300">
+                <thead>
+                    <tr>
+                        <th onClick={() => handleSortInactiveBrokers("id")} className="cursor-pointer">
+                            ID {sortFieldInActiveBroker === "id" ? (sortDirectionInActiveBroker === "asc" ? "▲" : "▼") : ""}
+                        </th>
+
+                        <th onClick={() => handleSortInactiveBrokers("host")} className="cursor-pointer">
+                            Host {sortFieldInActiveBroker === "host" ? (sortDirectionInActiveBroker === "asc" ? "▲" : "▼") : ""}
+                        </th>
+
+                        <th onClick={() => handleSortInactiveBrokers("port")} className="cursor-pointer">
+                            Port {sortFieldInActiveBroker === "port" ? (sortDirectionInActiveBroker === "asc" ? "▲" : "▼") : ""}
+                        </th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {loading ? (
+                        <tr>
+                            <td colSpan="4" className="text-center py-4">Loading inactive brokers...</td>
+                        </tr>
+                    ) :  error ? (
+                        <tr>
+                            <td colSpan="4" className="text-center py-4">{error}</td>
+                        </tr>
+                    ) : (
+                        paginatedInactiveBrokers.map(data => (
+                            <tr key={data.id}>
+                                <td>{data.id}</td>
+                                <td>{data.host}</td>
+                                <td>{data.port}</td>
+                        </tr>
+                    )))}
+                </tbody>
+            </table>
+
+            <div className="flex justify-between mt-4">
+                <button
+                    disabled={currentPageInactiveBrokers === 1}
+                    onClick={() => setCurrentPageInactiveBrokers(p => p - 1)}
+                >
+                    Prev
+                </button>
+
+                <span>Page {currentPageInactiveBrokers} / {totalPagesInactiveBrokers}</span>
+
+                <button
+                    disabled={currentPageInactiveBrokers === totalPagesInactiveBrokers}
+                    onClick={() => setCurrentPageInactiveBrokers(p => p + 1)}
                 >
                     Next
                 </button>

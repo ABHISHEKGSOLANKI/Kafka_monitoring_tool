@@ -5,6 +5,7 @@ import Dashboard from "./pages/Dashboard";
 import Topics from "./pages/Topics";
 import TopicDetails from "./pages/TopicDetails";
 import Header from "./components/Header";
+import Brokers from "./pages/Brokers";
 
 function App() {
   const [collapsed, setCollapsed] = useState(false);
@@ -21,7 +22,7 @@ function App() {
 
           <Routes>
             <Route path="/" element={<Dashboard />} />
-            <Route path="/brokers" element={<div>Broker List</div>} />
+            <Route path="/brokers" element={<Brokers />} />
             <Route path="/topics" element={<Topics />} />
             <Route path="/topics/details" element={<TopicDetails />} />
             <Route path="/producers" element={<div>Producer List</div>} />

@@ -38,7 +38,6 @@ export default function Sidebar({ collapsed, setCollapsed, setActiveMenu }) {
 }
 
 function NavItem({ to, icon, label, collapsed, setActiveMenu, end = false }) {
-  console.log({to, icon, label, collapsed, setActiveMenu})
   return (
     <NavLink
       to={to}

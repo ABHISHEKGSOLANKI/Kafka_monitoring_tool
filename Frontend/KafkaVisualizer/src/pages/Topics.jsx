@@ -63,13 +63,8 @@ export default function Topics() {
             });
     }, []);
 
-    if (loading) return <div>Loading topics...</div>;
-    if (error) return <div>{error}</div>;
-
     return (
         <div>
-            <h1>Kafka Topics</h1>
-
             <input
                 type="text"
                 placeholder="Search topics..."
@@ -103,7 +98,15 @@ export default function Topics() {
                 </thead>
 
                 <tbody>
-                    {paginatedTopics.map(data => (
+                    {loading ? (
+                        <tr>
+                            <td colSpan="4" className="text-center py-4">Loading topics...</td>
+                        </tr>
+                    ) : error ? (
+                        <tr>
+                            <td colSpan="4" className="text-center py-4">{error}</td>
+                        </tr>
+                    ) : paginatedTopics.map(data => (
                         <tr key={data.topic}>
                             <NavLink to="/topics/details" state={{ topic: data.topic }} className="text-blue-400 hover:underline">
                                 {data.topic}
