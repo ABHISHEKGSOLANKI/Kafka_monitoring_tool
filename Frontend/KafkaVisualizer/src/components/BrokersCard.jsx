@@ -49,9 +49,8 @@ export default function BrokerCard() {
       clearInterval(interval);
     };
   }, []);
-const activeList = Object.values(brokers.active || {});
-const inactiveList = Object.values(brokers.inactive || {});
-const maxRows = Math.max(activeList.length, inactiveList.length);
+  const activeList = Object.values(brokers.active || {});
+  const inactiveList = Object.values(brokers.inactive || {});
   return (
     <NavLink
       to="/brokers"
@@ -64,33 +63,28 @@ const maxRows = Math.max(activeList.length, inactiveList.length);
       ) : error ? (
         <div className="text-red-400">{error}</div>
       ) : (
-<table className="min-w-full bg-slate-800 text-gray-300">
-  <thead>
-    <tr>
-      <th className="p-2 text-left">Active Brokers</th>
-      <th className="p-2 text-left">Inactive Brokers</th>
-    </tr>
-  </thead>
+        <table className="min-w-full bg-slate-800 text-gray-300">
+          <thead>
+            <tr>
+              <th className="p-2 text-left">Active Brokers</th>
+              <th className="p-2 text-left">Inactive Brokers</th>
+            </tr>
+          </thead>
 
-  <tbody>
-    {Array.from({ length: maxRows }).map((_, index) => {
-      const active = activeList[index];
-      const inactive = inactiveList[index];
+          <tbody>
 
-      return (
-        <tr key={index} className="text-xs border-t border-slate-700">
-          <td className="p-2">
-            {active ? `${active.host}:${active.port}` : "-"}
-          </td>
+            <tr className="text-xs border-t border-slate-700">
+              <td className="p-2">
+                {activeList.length > 0 ? activeList.length : 0}
+              </td>
 
-          <td className="p-2">
-            {inactive ? `${inactive.host}:${inactive.port}` : "-"}
-          </td>
-        </tr>
-      );
-    })}
-  </tbody>
-</table>
+              <td className="p-2">
+                {inactiveList.length > 0 ? inactiveList.length : 0}
+              </td>
+            </tr>
+
+          </tbody>
+        </table>
       )}
     </NavLink>
   );

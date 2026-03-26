@@ -1,59 +1,56 @@
 import { NavLink } from "react-router-dom";
 
+const navItems = [
+  { to: "/", label: "Overview", shortLabel: "OV" },
+  { to: "/brokers", label: "Brokers", shortLabel: "BR" },
+  { to: "/topics", label: "Topics", shortLabel: "TP" },
+  { to: "/producers", label: "Producers", shortLabel: "PR" },
+  { to: "/consumers", label: "Consumers", shortLabel: "CS" },
+];
 
-  
-export default function Sidebar({ collapsed, setCollapsed, setActiveMenu }) {
+export default function Sidebar({ collapsed, setCollapsed }) {
   return (
-    <aside
-      className="h-dvh bg-stone-900 text-gray-300 flex flex-col
-                 transition-all duration-300 ease-in-out mr-1 rounded-xl"
-    >
-      {/* Toggle */}
-      <button
-        onClick={() => setCollapsed(!collapsed)}
-        className="m-4 rounded-lg bg-slate-800 hover:bg-slate-700
-                   text-white text-lg"
-      >
-        ☰
-      </button>
+    <aside className="border-r border-white/10 bg-slate-950/70 px-3 py-4 backdrop-blur">
+      <div className="flex items-center justify-between gap-3 px-2 pb-6">
+        {!collapsed ? (
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-[0.28em] text-teal-400">Cluster</p>
+            <p className="mt-1 text-lg font-bold text-white">Kafka Visualizer</p>
+          </div>
+        ) : (
+          <div className="text-sm font-bold text-teal-400">KV</div>
+        )}
+        <button
+          className="rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-sm font-semibold text-slate-200 transition hover:border-teal-400/30 hover:text-white"
+          onClick={() => setCollapsed((value) => !value)}
+          type="button"
+        >
+          {collapsed ? ">" : "<"}
+        </button>
+      </div>
 
-      {/* Navigation */}
-      <nav className="flex flex-col gap-2 px-2">
-        <NavItem to="/" icon="📊" label="Dashboard" collapsed={collapsed} setActiveMenu={setActiveMenu} active />
-        <NavItem to="/brokers" icon="🖥️" label="Brokers" collapsed={collapsed} setActiveMenu={setActiveMenu} end />
-        <NavItem to="/topics" icon="🧵" label="Topics" collapsed={collapsed} setActiveMenu={setActiveMenu} end />
-        <NavItem to="/topics/details" icon="📋" label="Topics Details" collapsed={collapsed} setActiveMenu={setActiveMenu} />
-        <NavItem to="/producers" icon="🚀" label="Producers" collapsed={collapsed} setActiveMenu={setActiveMenu} end />
-        <NavItem to="/consumers" icon="👥" label="Consumers" collapsed={collapsed} setActiveMenu={setActiveMenu} end />
+      <nav className="space-y-2">
+        {navItems.map((item) => (
+          <NavLink
+            key={item.to}
+            className={({ isActive }) =>
+              [
+                "flex items-center gap-3 rounded-2xl px-3 py-3 text-sm font-medium transition",
+                isActive
+                  ? "bg-teal-500/15 text-teal-300 ring-1 ring-teal-400/30"
+                  : "text-slate-400 hover:bg-slate-900 hover:text-white",
+              ].join(" ")
+            }
+            end={item.to === "/"}
+            to={item.to}
+          >
+            <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-slate-900 text-xs font-bold text-slate-200">
+              {item.shortLabel}
+            </span>
+            {!collapsed ? <span>{item.label}</span> : null}
+          </NavLink>
+        ))}
       </nav>
-
-      {/* Footer */}
-      {!collapsed && (
-        <div className="mt-auto p-4 text-sm text-gray-500">
-          Cluster: <span className="text-gray-300">DEV</span>
-        </div>
-      )}
     </aside>
   );
 }
-
-function NavItem({ to, icon, label, collapsed, setActiveMenu, end = false }) {
-  return (
-    <NavLink
-      to={to}
-      end={end}
-      className={({ isActive }) =>
-        `flex items-center gap-3 px-3.5 py-3 rounded-lg cursor-pointer
-         transition-colors duration-200
-         ${isActive
-            ? "bg-green-500 text-black"
-            : "hover:bg-slate-800 hover:text-white"}` 
-      } onClick={() => setActiveMenu(label)}
-    >
-      <span className="text-lg">{icon}</span>
-      {!collapsed && <span className="text-sm font-medium">{label}</span>}
-    </NavLink>
-  );
-}
-
-

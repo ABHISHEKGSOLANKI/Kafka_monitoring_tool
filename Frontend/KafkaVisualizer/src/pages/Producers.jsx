@@ -1,135 +1,83 @@
-import { fetchTopics } from "../api/kafkaApi";
 import { useEffect, useState } from "react";
+import Panel from "../components/Panel";
+import StatusBadge from "../components/StatusBadge";
+import { fetchProducers } from "../api/kafkaApi";
+import { normalizeEntities } from "../utils/formatters";
 
 export default function Producers() {
-    const [search, setSearch] = useState("");
-    const [currentPage, setCurrentPage] = useState(1);
-    const [rowsPerPage] = useState(5);
-    const [sortField, setSortField] = useState("topic");
-    const [sortDirection, setSortDirection] = useState("asc");
-    const [topics, setTopics] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
+  const [producers, setProducers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-    // 🔹 Normalize API response (fix backend typo safely)
-    const normalizedTopics = topics.map(t => ({
-        ...t,
-        replicationFactor: t.replicationFactor ?? t.replificationFactor
-    }));
+  useEffect(() => {
+    let mounted = true;
 
-    const filteredTopics = normalizedTopics.filter(topic =>
-        topic.topic.toLowerCase().includes(search.toLowerCase())
-    );
+    fetchProducers()
+      .then((response) => {
+        if (!mounted) return;
+        setProducers(normalizeEntities(response.data, "producer"));
+        setError("");
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setError("Failed to load producers.");
+      })
+      .finally(() => {
+        if (mounted) setLoading(false);
+      });
 
-    const sortedTopics = [...filteredTopics].sort((a, b) => {
-        const valA = a[sortField];
-        const valB = b[sortField];
-
-        if (typeof valA === "number") {
-            return sortDirection === "asc" ? valA - valB : valB - valA;
-        }
-
-        return sortDirection === "asc"
-            ? String(valA).localeCompare(String(valB))
-            : String(valB).localeCompare(String(valA));
-    });
-
-    const totalPages = Math.ceil(sortedTopics.length / rowsPerPage);
-
-    const paginatedTopics = sortedTopics.slice(
-        (currentPage - 1) * rowsPerPage,
-        currentPage * rowsPerPage
-    );
-
-    const handleSort = (field) => {
-        if (field === sortField) {
-            setSortDirection(prev => (prev === "asc" ? "desc" : "asc"));
-        } else {
-            setSortField(field);
-            setSortDirection("asc");
-        }
+    return () => {
+      mounted = false;
     };
+  }, []);
 
-    useEffect(() => {
-        fetchTopics()
-            .then(res => {
-                setTopics(res.data);
-                setLoading(false);
-            })
-            .catch(() => {
-                setError("Failed to load topics");
-                setLoading(false);
-            });
-    }, []);
+  return (
+    <Panel subtitle="Producer clients as returned by the producer API." title="Producers">
+      {error ? <div className="mb-4 rounded-2xl bg-rose-500/10 px-4 py-3 text-sm text-rose-200">{error}</div> : null}
+      <EntityTable label="producer" loading={loading} rows={producers} />
+    </Panel>
+  );
+}
 
-    if (loading) return <div>Loading topics...</div>;
-    if (error) return <div>{error}</div>;
-
-    return (
-        <div>
-            <h1>Kafka Topics</h1>
-
-            <input
-                type="text"
-                placeholder="Search topics..."
-                value={search}
-                onChange={(e) => {
-                    setSearch(e.target.value);
-                    setCurrentPage(1);
-                }}
-                className="mb-4 p-2 rounded bg-slate-700 text-white"
-            />
-
-            <table className="min-w-full bg-slate-800 text-gray-300">
-                <thead>
-                    <tr>
-                        <th onClick={() => handleSort("topic")} className="cursor-pointer">
-                            Topic {sortField === "topic" ? (sortDirection === "asc" ? "▲" : "▼") : ""}
-                        </th>
-
-                        <th onClick={() => handleSort("partition")} className="cursor-pointer">
-                            Partitions {sortField === "partition" ? (sortDirection === "asc" ? "▲" : "▼") : ""}
-                        </th>
-
-                        <th onClick={() => handleSort("replicationFactor")} className="cursor-pointer">
-                            Replication {sortField === "replicationFactor" ? (sortDirection === "asc" ? "▲" : "▼") : ""}
-                        </th>
-
-                        <th onClick={() => handleSort("retention")} className="cursor-pointer">
-                            Retention(ms) {sortField === "retention" ? (sortDirection === "asc" ? "▲" : "▼") : ""}
-                        </th>
-                    </tr>
-                </thead>
-
-                <tbody>
-                    {paginatedTopics.map(data => (
-                        <tr key={data.topic}>
-                            <td>{data.topic}</td>
-                            <td>{data.partition}</td>
-                            <td>{data.replicationFactor}</td>
-                            <td>{Number(data.retention).toLocaleString()}</td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
-
-            <div className="flex justify-between mt-4">
-                <button
-                    disabled={currentPage === 1}
-                    onClick={() => setCurrentPage(p => p - 1)}
-                >
-                    Prev
-                </button>
-
-                <span>Page {currentPage} / {totalPages}</span>
-
-                <button
-                    disabled={currentPage === totalPages}
-                    onClick={() => setCurrentPage(p => p + 1)}
-                >
-                    Next
-                </button>
-            </div>
-        </div>
-    );
+function EntityTable({ loading, rows, label }) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="min-w-full text-left text-sm">
+        <thead className="text-slate-400">
+          <tr>
+            <th className="pb-3 pr-4">Name</th>
+            <th className="pb-3 pr-4">Topic</th>
+            <th className="pb-3 pr-4">Host</th>
+            <th className="pb-3">Status</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-white/6">
+          {loading ? (
+            <tr>
+              <td className="py-5 text-slate-400" colSpan="4">
+                Loading {label}s...
+              </td>
+            </tr>
+          ) : rows.length === 0 ? (
+            <tr>
+              <td className="py-5 text-slate-400" colSpan="4">
+                No {label}s returned by the API.
+              </td>
+            </tr>
+          ) : (
+            rows.map((row) => (
+              <tr key={row.id}>
+                <td className="py-4 pr-4 text-white">{row.name}</td>
+                <td className="py-4 pr-4 text-slate-300">{String(row.topic)}</td>
+                <td className="py-4 pr-4 text-slate-300">{row.host}</td>
+                <td className="py-4">
+                  <StatusBadge label={row.status} />
+                </td>
+              </tr>
+            ))
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
 }

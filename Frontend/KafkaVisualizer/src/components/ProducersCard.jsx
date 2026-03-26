@@ -1,21 +1,21 @@
-import { fetchTopics } from "../api/kafkaApi";
+import { fetchProducers } from "../api/kafkaApi";
 import { useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
 
 export default function ProducersCard() {
-  const [topics, setTopics] = useState([]);
+  const [producers, setProducers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    fetchTopics()
+    fetchProducers()
       .then((res) => {
-        setTopics(res.data);
+        setProducers(res.data);
         setLoading(false);
       })
       .catch((err) => {
         console.error(err);
-        setError("Failed to load topics");
+        setError("Failed to load producers");
         setLoading(false);
       });
   }, []);
@@ -30,7 +30,7 @@ export default function ProducersCard() {
           <div className="text-red-400">{error}</div>
         ) : (
 
-          <div className="text-3xl font-semibold mt-2">{topics.length}</div>
+          <div className="text-3xl font-semibold mt-2">{producers.length}</div>
 
         )}
 

@@ -1,212 +1,109 @@
-import { fetchBrokers } from "../api/kafkaApi";
 import { useEffect, useState } from "react";
-import { sorting, handleSort } from "../utils/pageination";
+import Panel from "../components/Panel";
+import StatusBadge from "../components/StatusBadge";
+import { fetchBrokers } from "../api/kafkaApi";
+import { normalizeBrokerGroups } from "../utils/formatters";
 
 export default function Brokers() {
-    // Active brokers    
-    const [activeBrokers, setActiveBrokers] = useState([]);
-    const [searchActiveBrokers, setSearchActiveBrokers] = useState("");
-    const [currentPageActiveBrokers, setCurrentPageActiveBrokers] = useState(1);
-    const [rowsPerPageActiveBrokers] = useState(5);
-    const [sortFieldActiveBroker, setSortFieldActiveBroker] = useState("host");
-    const [sortDirectionActiveBroker, setSortDirectionActiveBroker] = useState("asc");
+  const [brokers, setBrokers] = useState({ active: [], inactive: [] });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-    // Inactive brokers
-    const [inactiveBrokers, setInactiveBrokers] = useState([]);
-    const [searchInactiveBrokers, setSearchInactiveBrokers] = useState("");
-    const [currentPageInactiveBrokers, setCurrentPageInactiveBrokers] = useState(1);
-    const [rowsPerPageInActiveBroker] = useState(5);
-    const [sortFieldInActiveBroker, setSortFieldInActiveBroker] = useState("host");
-    const [sortDirectionInActiveBroker, setSortDirectionInActiveBroker] = useState("asc");
+  useEffect(() => {
+    let mounted = true;
 
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
-
-
-const filteredActiveBrokers = activeBrokers.filter(broker => 
-    broker.id.toLowerCase().includes(searchActiveBrokers.toLowerCase()) ||
-    broker.host.toLowerCase().includes(searchActiveBrokers.toLowerCase()) ||
-    broker.port.toString().includes(searchActiveBrokers)
-);  
-
-const filteredInActiveBrokers = inactiveBrokers.filter(broker => 
-    broker.id.toLowerCase().includes(searchInactiveBrokers.toLowerCase()) ||
-    broker.host.toLowerCase().includes(searchInactiveBrokers.toLowerCase()) ||
-    broker.port.toString().includes(searchInactiveBrokers)
-);
-
-
-const sortedActiveBrokers = sorting(filteredActiveBrokers, sortFieldActiveBroker, sortDirectionActiveBroker);
-
-const sortedInactiveBrokers = sorting(filteredInActiveBrokers, sortFieldInActiveBroker, sortDirectionInActiveBroker);
-
-const totalPagesActiveBrokers = Math.ceil(sortedActiveBrokers.length / rowsPerPageActiveBrokers);
-const totalPagesInactiveBrokers = Math.ceil(sortedInactiveBrokers.length / rowsPerPageInActiveBroker);
-
-    const paginatedActiveBrokers = sortedActiveBrokers.slice(
-        (currentPageActiveBrokers - 1) * rowsPerPageActiveBrokers,
-        currentPageActiveBrokers * rowsPerPageActiveBrokers
-    );
-
-    const paginatedInactiveBrokers = sortedInactiveBrokers.slice(
-        (currentPageInactiveBrokers - 1) * rowsPerPageInActiveBroker,
-        currentPageInactiveBrokers * rowsPerPageInActiveBroker
-    );
-
-    const handleSortWrapper = (field) => handleSort(field, sortFieldActiveBroker, setSortFieldActiveBroker, sortDirectionActiveBroker, setSortDirectionActiveBroker);
-    const handleSortInActiveWrapper = (field) => handleSort(field, sortFieldInActiveBroker, setSortFieldInActiveBroker, sortDirectionInActiveBroker, setSortDirectionInActiveBroker);
-
-useEffect(() => {
     fetchBrokers()
-        .then(res => {
-            const activeBrokers = Object.values(res.data.active || {});
-            const inActiveBrokers = Object.values(res.data.inactive || {});
-            setActiveBrokers(activeBrokers);
-            setInactiveBrokers(inActiveBrokers);
-            setLoading(false);
-        })
-        .catch(() => {
-            setError("Failed to load brokers...");
-            setLoading(false);
-        });
-}, []);
+      .then((response) => {
+        if (!mounted) return;
+        setBrokers(normalizeBrokerGroups(response.data));
+        setError("");
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setError("Failed to load broker state.");
+      })
+      .finally(() => {
+        if (mounted) setLoading(false);
+      });
 
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
-    return (
-        <div>
-            <input
-                type="text"
-                placeholder="Search active brokers..."
-                value={searchActiveBrokers}
-                onChange={(e) => {
-                    setSearchActiveBrokers(e.target.value);
-                    setCurrentPageActiveBrokers(1);
-                }}
-                className="mb-4 p-2 rounded bg-slate-700 text-white"
-            />
-
-            <table className="min-w-full bg-slate-800 text-gray-300">
-                <thead>
-                    <tr>
-                        <th onClick={() => handleSortWrapper("id")} className="cursor-pointer">
-                            ID {sortFieldActiveBroker === "id" ? (sortDirectionActiveBroker === "asc" ? "▲" : "▼") : ""}
-                        </th>
-
-                        <th onClick={() => handleSortWrapper("host")} className="cursor-pointer">
-                            Host {sortFieldActiveBroker === "host" ? (sortDirectionActiveBroker === "asc" ? "▲" : "▼") : ""}
-                        </th>
-
-                        <th onClick={() => handleSortWrapper("port")} className="cursor-pointer">
-                            Port {sortFieldActiveBroker === "port" ? (sortDirectionActiveBroker === "asc" ? "▲" : "▼") : ""}
-                        </th>
-                    </tr>
-                </thead>
-
-                <tbody>
-                    {loading ? (
-                        <tr>
-                            <td colSpan="4" className="text-center py-4">Loading Active brokers...</td>
-                        </tr>
-                    ) :  error ? (
-                        <tr>
-                            <td colSpan="4" className="text-center py-4">{error}</td>
-                        </tr>
-                    ) : (
-                        paginatedActiveBrokers.map(data => (
-                            <tr key={data.id}>
-                                <td>{data.id}</td>
-                                <td>{data.host}</td>
-                                <td>{data.port}</td>
-                        </tr>
-                    )))}
-                </tbody>
-            </table>
-
-            <div className="flex justify-between mt-4">
-                <button
-                    disabled={currentPageActiveBrokers === 1}
-                    onClick={() => setCurrentPageActiveBrokers(p => p - 1)}
-                >
-                    Prev
-                </button>
-
-                <span>Page {currentPageActiveBrokers} / {totalPagesActiveBrokers}</span>
-
-                <button
-                    disabled={currentPageActiveBrokers === totalPagesActiveBrokers}
-                    onClick={() => setCurrentPageActiveBrokers(p => p + 1)}
-                >
-                    Next
-                </button>
-            </div>
-
-            {/* Inactive */}
-
-            <input
-                type="text"
-                placeholder="Search inactive brokers..."
-                value={searchInactiveBrokers}
-                onChange={(e) => {
-                    setSearchInactiveBrokers(e.target.value);
-                    setCurrentPageInactiveBrokers(1);
-                }}
-                className="mb-4 p-2 rounded bg-slate-700 text-white"
-            />
-
-            <table className="min-w-full bg-slate-800 text-gray-300">
-                <thead>
-                    <tr>
-                        <th onClick={() => handleSortInactiveBrokers("id")} className="cursor-pointer">
-                            ID {sortFieldInActiveBroker === "id" ? (sortDirectionInActiveBroker === "asc" ? "▲" : "▼") : ""}
-                        </th>
-
-                        <th onClick={() => handleSortInactiveBrokers("host")} className="cursor-pointer">
-                            Host {sortFieldInActiveBroker === "host" ? (sortDirectionInActiveBroker === "asc" ? "▲" : "▼") : ""}
-                        </th>
-
-                        <th onClick={() => handleSortInactiveBrokers("port")} className="cursor-pointer">
-                            Port {sortFieldInActiveBroker === "port" ? (sortDirectionInActiveBroker === "asc" ? "▲" : "▼") : ""}
-                        </th>
-                    </tr>
-                </thead>
-
-                <tbody>
-                    {loading ? (
-                        <tr>
-                            <td colSpan="4" className="text-center py-4">Loading inactive brokers...</td>
-                        </tr>
-                    ) :  error ? (
-                        <tr>
-                            <td colSpan="4" className="text-center py-4">{error}</td>
-                        </tr>
-                    ) : (
-                        paginatedInactiveBrokers.map(data => (
-                            <tr key={data.id}>
-                                <td>{data.id}</td>
-                                <td>{data.host}</td>
-                                <td>{data.port}</td>
-                        </tr>
-                    )))}
-                </tbody>
-            </table>
-
-            <div className="flex justify-between mt-4">
-                <button
-                    disabled={currentPageInactiveBrokers === 1}
-                    onClick={() => setCurrentPageInactiveBrokers(p => p - 1)}
-                >
-                    Prev
-                </button>
-
-                <span>Page {currentPageInactiveBrokers} / {totalPagesInactiveBrokers}</span>
-
-                <button
-                    disabled={currentPageInactiveBrokers === totalPagesInactiveBrokers}
-                    onClick={() => setCurrentPageInactiveBrokers(p => p + 1)}
-                >
-                    Next
-                </button>
-            </div>
+  return (
+    <div className="space-y-6">
+      <Panel subtitle="Broker availability split by active and inactive nodes." title="Broker summary">
+        {error ? <div className="rounded-2xl bg-rose-500/10 px-4 py-3 text-sm text-rose-200">{error}</div> : null}
+        <div className="grid gap-4 md:grid-cols-2">
+          <BrokerSummaryCard count={brokers.active.length} label="Active brokers" tone="success" />
+          <BrokerSummaryCard count={brokers.inactive.length} label="Inactive brokers" tone="danger" />
         </div>
-    );
+      </Panel>
+
+      <div className="grid gap-6 xl:grid-cols-2">
+        <BrokerTable loading={loading} rows={brokers.active} title="Active brokers" tone="HEALTHY" />
+        <BrokerTable loading={loading} rows={brokers.inactive} title="Inactive brokers" tone="OFFLINE" />
+      </div>
+    </div>
+  );
+}
+
+function BrokerSummaryCard({ count, label, tone }) {
+  const toneStyles = {
+    success: "border-emerald-500/20 bg-emerald-500/8",
+    danger: "border-rose-500/20 bg-rose-500/8",
+  };
+
+  return (
+    <div className={`rounded-3xl border p-5 ${toneStyles[tone]}`}>
+      <p className="text-sm text-slate-300">{label}</p>
+      <p className="mt-3 text-4xl font-bold text-white">{count}</p>
+    </div>
+  );
+}
+
+function BrokerTable({ loading, rows, title, tone }) {
+  return (
+    <Panel subtitle="Broker ID, host and port from the cluster metadata API." title={title}>
+      <div className="overflow-x-auto">
+        <table className="min-w-full text-left text-sm">
+          <thead className="text-slate-400">
+            <tr>
+              <th className="pb-3 pr-4">ID</th>
+              <th className="pb-3 pr-4">Host</th>
+              <th className="pb-3 pr-4">Port</th>
+              <th className="pb-3">Status</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/6">
+            {loading ? (
+              <tr>
+                <td className="py-5 text-slate-400" colSpan="4">
+                  Loading brokers...
+                </td>
+              </tr>
+            ) : rows.length === 0 ? (
+              <tr>
+                <td className="py-5 text-slate-400" colSpan="4">
+                  No brokers in this group.
+                </td>
+              </tr>
+            ) : (
+              rows.map((broker) => (
+                <tr key={`${title}-${broker.id}`}>
+                  <td className="py-4 pr-4 text-white">{broker.id}</td>
+                  <td className="py-4 pr-4 text-slate-300">{broker.host}</td>
+                  <td className="py-4 pr-4 text-slate-300">{broker.port}</td>
+                  <td className="py-4">
+                    <StatusBadge label={tone} />
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </Panel>
+  );
 }

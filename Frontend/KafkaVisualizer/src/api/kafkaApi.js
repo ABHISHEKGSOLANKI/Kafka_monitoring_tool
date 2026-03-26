@@ -1,18 +1,53 @@
 import axios from "axios";
 
-const BASE_URL = "http://localhost:8080/kafka/v1";
+const CLUSTER_BASE_URL = "http://localhost:8080/kafka/v1";
+const PRODUCER_BASE_URL = "http://localhost:8081/kafka/producer/v1";
 
-export const fetchBrokers = () => axios.get(`${BASE_URL}/brokers`);
-export const fetchTopics = () => axios.get(`${BASE_URL}/topics`);
+const clusterClient = axios.create({
+  baseURL: CLUSTER_BASE_URL,
+  timeout: 8000,
+});
 
-export const fetchTopicDetails = (topic) =>
-  axios.get(`${BASE_URL}/topics/${topic}`);
+const producerClient = axios.create({
+  baseURL: PRODUCER_BASE_URL,
+  timeout: 8000,
+});
 
-export const fetchConsumerGroups = () =>
-  axios.get(`${BASE_URL}/consumers`);
+export function fetchBrokers() {
+  return clusterClient.get("/brokers");
+}
 
-export const searchMessages = (topic, query) =>
-  axios.post(`${BASE_URL}/search`, { topic, query });
+export function fetchTopics() {
+  return clusterClient.get("/topics");
+}
 
-export const fetchPartitionHealth = (topic) =>
-  axios.get(`${BASE_URL}/topics/${topic}/partitions`);
+export function fetchProducers() {
+  return producerClient.get("/producers");
+}
+
+export function fetchTopicDetails(topic) {
+  return clusterClient.get(`/topics/${encodeURIComponent(topic)}`);
+}
+
+export function fetchConsumerGroups() {
+  return clusterClient.get("/consumers");
+}
+
+export function searchMessages(topic, query) {
+  return clusterClient.post("/search", { topic, query });
+}
+
+export function fetchPartitionHealth(topic) {
+  return clusterClient.get(`/topics/${encodeURIComponent(topic)}/partitions`);
+}
+
+export async function fetchClusterSnapshot() {
+  const [brokers, topics, producers, consumers] = await Promise.allSettled([
+    fetchBrokers(),
+    fetchTopics(),
+    fetchProducers(),
+    fetchConsumerGroups(),
+  ]);
+
+  return { brokers, topics, producers, consumers };
+}

@@ -1,141 +1,177 @@
-import { NavLink } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import Panel from "../components/Panel";
+import StatusBadge from "../components/StatusBadge";
 import { fetchTopics } from "../api/kafkaApi";
-import { useEffect, useState } from "react";
+import { formatNumber, formatRetention, normalizeTopics } from "../utils/formatters";
+
+const rowsPerPage = 8;
 
 export default function Topics() {
-    const [search, setSearch] = useState("");
-    const [currentPage, setCurrentPage] = useState(1);
-    const [rowsPerPage] = useState(5);
-    const [sortField, setSortField] = useState("topic");
-    const [sortDirection, setSortDirection] = useState("asc");
-    const [topics, setTopics] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
+  const [search, setSearch] = useState("");
+  const [sortField, setSortField] = useState("topic");
+  const [sortDirection, setSortDirection] = useState("asc");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [topics, setTopics] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-    // 🔹 Normalize API response (fix backend typo safely)
-    const normalizedTopics = topics.map(t => ({
-        ...t,
-        replicationFactor: t.replicationFactor ?? t.replificationFactor
-    }));
+  useEffect(() => {
+    let mounted = true;
 
-    const filteredTopics = normalizedTopics.filter(topic =>
-        topic.topic.toLowerCase().includes(search.toLowerCase())
-    );
+    fetchTopics()
+      .then((response) => {
+        if (!mounted) return;
+        setTopics(normalizeTopics(response.data));
+        setError("");
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setError("Failed to load topics.");
+      })
+      .finally(() => {
+        if (mounted) setLoading(false);
+      });
 
-    const sortedTopics = [...filteredTopics].sort((a, b) => {
-        const valA = a[sortField];
-        const valB = b[sortField];
-
-        if (typeof valA === "number") {
-            return sortDirection === "asc" ? valA - valB : valB - valA;
-        }
-
-        return sortDirection === "asc"
-            ? String(valA).localeCompare(String(valB))
-            : String(valB).localeCompare(String(valA));
-    });
-
-    const totalPages = Math.ceil(sortedTopics.length / rowsPerPage);
-
-    const paginatedTopics = sortedTopics.slice(
-        (currentPage - 1) * rowsPerPage,
-        currentPage * rowsPerPage
-    );
-
-    const handleSort = (field) => {
-        if (field === sortField) {
-            setSortDirection(prev => (prev === "asc" ? "desc" : "asc"));
-        } else {
-            setSortField(field);
-            setSortDirection("asc");
-        }
+    return () => {
+      mounted = false;
     };
+  }, []);
 
-    useEffect(() => {
-        fetchTopics()
-            .then(res => {
-                setTopics(res.data);
-                setLoading(false);
-            })
-            .catch(() => {
-                setError("Failed to load topics");
-                setLoading(false);
-            });
-    }, []);
+  const filteredTopics = useMemo(() => {
+    return topics.filter((topic) => topic.topic.toLowerCase().includes(search.toLowerCase()));
+  }, [search, topics]);
 
-    return (
-        <div>
-            <input
-                type="text"
-                placeholder="Search topics..."
-                value={search}
-                onChange={(e) => {
-                    setSearch(e.target.value);
-                    setCurrentPage(1);
-                }}
-                className="mb-4 p-2 rounded bg-slate-700 text-white"
-            />
+  const sortedTopics = useMemo(() => {
+    return [...filteredTopics].sort((left, right) => {
+      const valueA = left[sortField];
+      const valueB = right[sortField];
 
-            <table className="min-w-full bg-slate-800 text-gray-300">
-                <thead>
-                    <tr>
-                        <th onClick={() => handleSort("topic")} className="cursor-pointer">
-                            Topic {sortField === "topic" ? (sortDirection === "asc" ? "▲" : "▼") : ""}
-                        </th>
+      if (typeof valueA === "number" && typeof valueB === "number") {
+        return sortDirection === "asc" ? valueA - valueB : valueB - valueA;
+      }
 
-                        <th onClick={() => handleSort("partition")} className="cursor-pointer">
-                            Partitions {sortField === "partition" ? (sortDirection === "asc" ? "▲" : "▼") : ""}
-                        </th>
+      return sortDirection === "asc"
+        ? String(valueA).localeCompare(String(valueB))
+        : String(valueB).localeCompare(String(valueA));
+    });
+  }, [filteredTopics, sortDirection, sortField]);
 
-                        <th onClick={() => handleSort("replicationFactor")} className="cursor-pointer">
-                            Replication {sortField === "replicationFactor" ? (sortDirection === "asc" ? "▲" : "▼") : ""}
-                        </th>
+  const totalPages = Math.max(1, Math.ceil(sortedTopics.length / rowsPerPage));
+  const pageTopics = sortedTopics.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
 
-                        <th onClick={() => handleSort("retention")} className="cursor-pointer">
-                            Retention(ms) {sortField === "retention" ? (sortDirection === "asc" ? "▲" : "▼") : ""}
-                        </th>
-                    </tr>
-                </thead>
+  function onSort(field) {
+    if (field === sortField) {
+      setSortDirection((value) => (value === "asc" ? "desc" : "asc"));
+    } else {
+      setSortField(field);
+      setSortDirection("asc");
+    }
+  }
 
-                <tbody>
-                    {loading ? (
-                        <tr>
-                            <td colSpan="4" className="text-center py-4">Loading topics...</td>
-                        </tr>
-                    ) : error ? (
-                        <tr>
-                            <td colSpan="4" className="text-center py-4">{error}</td>
-                        </tr>
-                    ) : paginatedTopics.map(data => (
-                        <tr key={data.topic}>
-                            <NavLink to="/topics/details" state={{ topic: data.topic }} className="text-blue-400 hover:underline">
-                                {data.topic}
-                            </NavLink>
-                            <td>{data.partition}</td>
-                            <td>{data.replicationFactor}</td>
-                            <td>{Number(data.retention).toLocaleString()}</td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
+  function healthLabel(topic) {
+    return topic.replicationFactor < 2 ? "Warning" : "Healthy";
+  }
 
-            <div className="flex justify-between mt-4">
-                <button
-                    disabled={currentPage === 1}
-                    onClick={() => setCurrentPage(p => p - 1)}
-                >
-                    Prev
-                </button>
+  return (
+    <Panel
+      action={
+        <input
+          className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-sm text-white outline-none sm:w-72"
+          onChange={(event) => {
+            setSearch(event.target.value);
+            setCurrentPage(1);
+          }}
+          placeholder="Search topics"
+          type="search"
+          value={search}
+        />
+      }
+      subtitle="Search, sort, and drill into topics to inspect partition health and messages."
+      title="Topics"
+    >
+      {error ? <div className="mb-4 rounded-2xl bg-rose-500/10 px-4 py-3 text-sm text-rose-200">{error}</div> : null}
+      <div className="overflow-x-auto">
+        <table className="min-w-full text-left text-sm">
+          <thead className="text-slate-400">
+            <tr>
+              {[
+                ["topic", "Topic"],
+                ["partitions", "Partitions"],
+                ["replicationFactor", "Replication"],
+                ["retention", "Retention"],
+              ].map(([field, label]) => (
+                <th key={field} className="pb-3 pr-4">
+                  <button className="font-semibold transition hover:text-white" onClick={() => onSort(field)} type="button">
+                    {label} {sortField === field ? (sortDirection === "asc" ? "^" : "v") : ""}
+                  </button>
+                </th>
+              ))}
+              <th className="pb-3 pr-4">Health</th>
+              <th className="pb-3">Action</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/6">
+            {loading ? (
+              <tr>
+                <td className="py-5 text-slate-400" colSpan="6">
+                  Loading topics...
+                </td>
+              </tr>
+            ) : pageTopics.length === 0 ? (
+              <tr>
+                <td className="py-5 text-slate-400" colSpan="6">
+                  No topics match the current search.
+                </td>
+              </tr>
+            ) : (
+              pageTopics.map((topic) => (
+                <tr key={topic.id}>
+                  <td className="py-4 pr-4 font-medium text-white">{topic.topic}</td>
+                  <td className="py-4 pr-4 text-slate-300">{formatNumber(topic.partitions)}</td>
+                  <td className="py-4 pr-4 text-slate-300">{formatNumber(topic.replicationFactor)}</td>
+                  <td className="py-4 pr-4 text-slate-300">{formatRetention(topic.retention)}</td>
+                  <td className="py-4 pr-4">
+                    <StatusBadge label={healthLabel(topic)} />
+                  </td>
+                  <td className="py-4">
+                    <Link
+                      className="text-sm font-semibold text-teal-300 transition hover:text-teal-200"
+                      to={`/topics/${encodeURIComponent(topic.topic)}`}
+                    >
+                      Inspect
+                    </Link>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
 
-                <span>Page {currentPage} / {totalPages}</span>
-
-                <button
-                    disabled={currentPage === totalPages}
-                    onClick={() => setCurrentPage(p => p + 1)}
-                >
-                    Next
-                </button>
-            </div>
+      <div className="mt-6 flex items-center justify-between text-sm text-slate-400">
+        <span>
+          Page {currentPage} of {totalPages}
+        </span>
+        <div className="flex gap-3">
+          <button
+            className="rounded-full border border-white/10 px-4 py-2 disabled:opacity-40"
+            disabled={currentPage === 1}
+            onClick={() => setCurrentPage((value) => value - 1)}
+            type="button"
+          >
+            Previous
+          </button>
+          <button
+            className="rounded-full border border-white/10 px-4 py-2 disabled:opacity-40"
+            disabled={currentPage === totalPages}
+            onClick={() => setCurrentPage((value) => value + 1)}
+            type="button"
+          >
+            Next
+          </button>
         </div>
-    );
+      </div>
+    </Panel>
+  );
 }
